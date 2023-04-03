@@ -1,32 +1,22 @@
 {
-  description = "Svelte flake template";
-
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     gitignore.url = "github:hercules-ci/gitignore.nix";
-    flake-parts.url = "github:hercules-ci/flake-parts";
+    flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = inputs @ {
+  outputs = {
     self,
     nixpkgs,
     gitignore,
-    flake-parts,
+    flake-utils,
     ...
   }:
-    flake-parts.lib.mkFlake {inherit inputs;} {
-      systems = ["x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin"];
-      perSystem = {
-        config,
-        self',
-        inputs',
-        pkgs,
-        system,
-        lib,
-        ...
-      }: let
-        inherit (gitignore.lib) gitignoreSource;
-        packageJSON = lib.importJSON ./package.json;
+    flake-utils.lib.eachDefaultSystem (
+      system: let
+        pkgs = nixpkgs.legacyPackages.${system};
+        packageJSON = pkgs.lib.importJSON ./package.json;
+        gitignoreSource = gitignore.lib.gitignoreSource;
       in {
         packages = rec {
           site-src = pkgs.mkYarnPackage rec {
@@ -50,14 +40,9 @@
           };
         };
 
-        devShells = {
-          default = pkgs.mkShell {
-            buildInputs = [
-              pkgs.yarn
-              pkgs.nodejs
-            ];
-          };
+        devShell = pkgs.mkShell {
+          buildInputs = [pkgs.yarn pkgs.nodejs];
         };
-      };
-    };
+      }
+    );
 }
